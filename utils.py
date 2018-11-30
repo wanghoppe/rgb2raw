@@ -119,3 +119,20 @@ def get_one_example(file, crop_size = 384, output_num = 4):
         raws[i] = raw_matrix
 
     return raws, rgbs
+
+def pack_raw_matrix(im):
+    # pack Bayer image to 4 channels
+#     im = raw.raw_image_visible.astype(np.float32)
+    im = (im + 1) * (16383.0/ 2.0)
+    im = np.maximum(im - 512, 0) / (16383 - 512)  # subtract the black level
+
+#     im = np.expand_dims(matrix, axis=)
+    img_shape = im.shape
+    H = img_shape[1]
+    W = img_shape[2]
+
+    out = np.concatenate((im[:, 0:H:2, 0:W:2, :],
+                          im[:, 0:H:2, 1:W:2, :],
+                          im[:, 1:H:2, 1:W:2, :],
+                          im[:, 1:H:2, 0:W:2, :]), axis=3)
+    return out
