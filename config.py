@@ -19,6 +19,9 @@ config.TRAIN.n_epoch = 2000
 config.TRAIN.lr_decay = 0.1
 config.TRAIN.decay_every = int(config.TRAIN.n_epoch / 2)
 
+config.TRAIN.training_dir = 'training_dir'
+config.TRAIN.pretrain_checkpoint = 'checkpoint'
+
 ## train set location
 # config.TRAIN.hr_img_path = 'data2017/DIV2K_train_HR/'
 # config.TRAIN.lr_img_path = 'data2017/DIV2K_train_LR_bicubic/X4/'

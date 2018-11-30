@@ -6,7 +6,39 @@ from PIL import Image
 import numpy as np
 import glob
 from PIL import Image
+import numpy as np
+from tensorlayer import logging
+import os
 
+def load_pretrain_model(sess, npz_file, network):
+    '''
+    Assign the given parameters to the TensorLayer network.
+    Except the the ones with '_new'
+
+    Parameters
+    ----------
+    sess : Session
+        TensorFlow Session.
+    npz_file : npz file
+        Which contains the params
+    network : :class:`Layer`
+        The network to be assigned.
+    '''
+    if not os.path.exists(npz_file):
+        logging.error("file {} doesn't exist.".format(npz_file))
+        return
+
+    ops = []
+    data = np.load(npz_file)
+    for idx, param in enumerate(data['params']):
+        if '_new' in network.all_params[idx].name:
+            pass
+        else:
+            ops.append(network.all_params[idx].assign(param))
+    if sess is not None:
+        sess.run(ops)
+        logging.info("[*] Load {} SUCCESS!".format(npz_file))
+    return network
 
 def get_one_example(file, crop_size = 384, output_num = 4):
     '''
