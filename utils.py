@@ -71,6 +71,7 @@ def load_pretrain_model(sess, npz_file, network):
     if sess is not None:
         sess.run(ops)
         logging.info("[*] Load {} SUCCESS!".format(npz_file))
+        # print('yes'*1000)
     return network
 
 def get_one_example(file, crop_size = 384, output_num = 4):
@@ -107,11 +108,12 @@ def get_one_example(file, crop_size = 384, output_num = 4):
 
         rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
         rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])
-        rgb_matrix = rgb_matrix /255
+        rgb_matrix = rgb_matrix / 127.5 - 1
         rgbs[i] = rgb_matrix
 
         raw_matrix = raw_full[yy:yy + crop_size, xx:xx + crop_size]
-        raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
+#         raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
+        raw_matrix = raw_matrix / (16383.0/ 2.0) - 1
 #         print(raw_matrix.shape)
         raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=2)
         raws[i] = raw_matrix
