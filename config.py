@@ -5,7 +5,7 @@ config = edict()
 config.TRAIN = edict()
 
 ## Adam
-config.TRAIN.batch_size = 16
+
 config.TRAIN.lr_init = 1e-4
 config.TRAIN.beta1 = 0.9
 
@@ -19,8 +19,14 @@ config.TRAIN.n_epoch = 2000
 config.TRAIN.lr_decay = 0.1
 config.TRAIN.decay_every = int(config.TRAIN.n_epoch / 2)
 
+
+## set_dir
 config.TRAIN.training_dir = 'training_dir'
 config.TRAIN.pretrain_checkpoint = 'checkpoint'
+config.TRAIN.train_data_dir = 'test_data'
+
+config.TRAIN.batch_size = 1
+config.TRAIN.crop_num = 1
 
 ## train set location
 # config.TRAIN.hr_img_path = 'data2017/DIV2K_train_HR/'
