@@ -9,6 +9,8 @@ from PIL import Image
 import numpy as np
 from tensorlayer import logging
 import os
+from multiprocessing import Pool
+from functools import partial
 
 
 def get_inputs_labels(file_dir, raw_file_list, crop_num, crop_size=384):
@@ -30,19 +32,20 @@ def get_inputs_labels(file_dir, raw_file_list, crop_num, crop_size=384):
         Label array of shape [len(raw_file_list)*crop_num, 384, 384, 1]
 
     '''
-    inputs_rgbs_lst = []
+        inputs_rgbs_lst = []
     label_raws_lst = []
+    p = Pool(8)
 
-    for fn in raw_file_list:
-        if not crop_num == None:
-            raws, rgbs = get_one_example(file = file_dir + os.path.sep + fn,
-                                        crop_size = crop_size,
-                                        output_num = crop_num)
-        else:
-            raws, rgbs = get_one_example_fix_crop(file = file_dir + os.path.sep + fn,
-                                        crop_size = crop_size)
-        inputs_rgbs_lst.append(rgbs)
-        label_raws_lst.append(raws)
+    if not crop_num == None:
+        p_func = partial(get_one_example, crop_size=crop_size, output_num=crop_num)
+    else:
+        p_func = partial(get_one_example_fix_crop, crop_size=crop_size)
+
+    lst = p.map(p_func, [file_dir + os.path.sep + i for i in raw_file_list])
+
+    for a, b in lst:
+        inputs_rgbs_lst.append(b)
+        label_raws_lst.append(a)
 
     inputs_rgbs = np.concatenate(inputs_rgbs_lst, axis=0)
     label_raws = np.concatenate(label_raws_lst, axis=0)
