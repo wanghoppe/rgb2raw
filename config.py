@@ -24,6 +24,7 @@ config.TRAIN.decay_every = int(config.TRAIN.n_epoch / 2)
 config.TRAIN.training_dir = 'training_dir'
 config.TRAIN.pretrain_checkpoint = 'checkpoint'
 config.TRAIN.train_data_dir = 'dataset/Sony/Sony/short'
+config.TRAIN.dark_model_dir = 'dark_model/Sony'
 
 config.TRAIN.batch_size = 16
 config.TRAIN.crop_num = 4
