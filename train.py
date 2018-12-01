@@ -120,7 +120,7 @@ def train():
             step_time = time.time()
 
             batch_file_name = train_data_list[idx: idx+batch_size]
-            inputs_rgbs, label_raws = get_inputs_labels(train_data_dir, batch_file_name, 2)
+            inputs_rgbs, label_raws = get_inputs_labels(train_data_dir, batch_file_name, crop_num)
 
             ## update G
             errM, _ = sess.run([mse_loss, g_optim_init], {t_image: inputs_rgbs, t_target_image: label_raws})
