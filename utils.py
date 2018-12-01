@@ -11,7 +11,7 @@ from tensorlayer import logging
 import os
 
 
-def get_inputs_labels(file_dir, raw_file_list, crop_num):
+def get_inputs_labels(file_dir, raw_file_list, crop_num, crop_size=384):
     '''
     Parameters
     ----------
@@ -19,9 +19,9 @@ def get_inputs_labels(file_dir, raw_file_list, crop_num):
         Data dir.
     raw_file_list : list
         List of name of the files need to read
-    crop_num : int
+    crop_num : int or None
         For every img, [crop_num] number of img are randomly cropped
-
+        If None, use fix crop
     Return
     ----------
     inputs_rgbs: np.array
@@ -34,7 +34,13 @@ def get_inputs_labels(file_dir, raw_file_list, crop_num):
     label_raws_lst = []
 
     for fn in raw_file_list:
-        raws, rgbs = get_one_example(file = file_dir + os.path.sep + fn, output_num = crop_num)
+        if not crop_num == None:
+            raws, rgbs = get_one_example(file = file_dir + os.path.sep + fn,
+                                        crop_size = crop_size,
+                                        output_num = crop_num)
+        else:
+            raws, rgbs = get_one_example_fix_crop(file = file_dir + os.path.sep + fn,
+                                        crop_size = crop_size)
         inputs_rgbs_lst.append(rgbs)
         label_raws_lst.append(raws)
 
