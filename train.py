@@ -11,6 +11,7 @@ import numpy as np
 import glob
 import importlib
 from PIL import Image
+from multiprocessing import Pool
 
 from model import *
 from utils import *
@@ -107,7 +108,7 @@ def train():
 
     # load file list
     train_data_list = sorted(tl.files.load_file_list(train_data_dir, regx = '^0.*.ARW', printable = False))
-
+    p = Pool(3) # 3 thread to read the dataset
     sess.run(tf.assign(lr_v, lr_init))
     print(" ** fixed learning rate: %f (for init G)" % lr_init)
 
@@ -123,7 +124,7 @@ def train():
             step_time = time.time()
 
             batch_file_name = train_data_list[idx: idx+batch_size]
-            inputs_rgbs, label_raws = get_inputs_labels(train_data_dir, batch_file_name, crop_num)
+            inputs_rgbs, label_raws = get_inputs_labels(p, train_data_dir, batch_file_name, crop_num)
 
             ## update G
             errM, _ = sess.run([mse_loss, g_optim_init], {t_image: inputs_rgbs, t_target_image: label_raws})

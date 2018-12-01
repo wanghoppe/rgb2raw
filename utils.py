@@ -13,7 +13,7 @@ from multiprocessing import Pool
 from functools import partial
 
 
-def get_inputs_labels(file_dir, raw_file_list, crop_num, crop_size=384):
+def get_inputs_labels(p, file_dir, raw_file_list, crop_num, crop_size=384):
     '''
     Parameters
     ----------
@@ -34,7 +34,7 @@ def get_inputs_labels(file_dir, raw_file_list, crop_num, crop_size=384):
     '''
     inputs_rgbs_lst = []
     label_raws_lst = []
-    p = Pool(8)
+    # p = Pool(3)
 
     if not crop_num == None:
         p_func = partial(get_one_example, crop_size=crop_size, output_num=crop_num)
@@ -42,6 +42,8 @@ def get_inputs_labels(file_dir, raw_file_list, crop_num, crop_size=384):
         p_func = partial(get_one_example_fix_crop, crop_size=crop_size)
 
     lst = p.map(p_func, [file_dir + os.path.sep + i for i in raw_file_list])
+
+    # del(p)
 
     for a, b in lst:
         inputs_rgbs_lst.append(b)
