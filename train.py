@@ -111,8 +111,8 @@ def train():
     ###========================= initialize G ===============================###
 
     ## fixed learning rate
-    # for epoch in range(0, n_epoch_init + 1):
-    for epoch in range(0, 1 + 1):
+    for epoch in range(0, n_epoch_init + 1):
+    # for epoch in range(0, 1 + 1):
         epoch_time = time.time()
         total_mse_loss, n_iter = 0, 0
 
@@ -143,8 +143,8 @@ def train():
 
     ###========================= train GAN (SRGAN) =========================###
 
-    # for epoch in range(0, n_epoch + 1):
-    for epoch in range(0, 1 + 1):
+    for epoch in range(0, n_epoch + 1):
+    # for epoch in range(0, 1 + 1):
         ## update learning rate
         if epoch != 0 and (epoch % decay_every == 0):
             new_lr_decay = lr_decay**(epoch // decay_every)
