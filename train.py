@@ -36,6 +36,8 @@ decay_every = config.TRAIN.decay_every
 training_dir = config.TRAIN.training_dir
 pretrain_checkpoint = config.TRAIN.pretrain_checkpoint
 train_data_dir = config.TRAIN.train_data_dir
+dark_model_dir = config.TRAIN.dark_model_dir
+
 
 crop_num = config.TRAIN.crop_num
 
