@@ -140,7 +140,7 @@ def train():
     #         tl.vis.save_images(out, [ni, ni], save_dir_ginit + '/train_%d.png' % epoch)
 
         ## save model
-        if (epoch != 0) and (epoch % 10 == 0):
+        if (epoch != 0) and (epoch % 2 == 0):
             tl.files.save_npz(net_g.all_params, name=training_dir + '/g_srgan_init.npz', sess=sess)
 
 
@@ -188,7 +188,7 @@ def train():
 #             tl.vis.save_images(out, [ni, ni], save_dir_gan + '/train_%d.png' % epoch)
 
         ## save model
-        if (epoch != 0) and (epoch % 10 == 0):
+        if (epoch != 0) and (epoch % 2 == 0):
             tl.files.save_npz(net_g.all_params, name=training_dir + '/g_srgan.npz'.format(tl.global_flag['mode']), sess=sess)
             tl.files.save_npz(net_d.all_params, name=training_dir + '/d_srgan.npz'.format(tl.global_flag['mode']), sess=sess)
 if __name__ == '__main__':
