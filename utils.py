@@ -32,7 +32,7 @@ def get_inputs_labels(file_dir, raw_file_list, crop_num, crop_size=384):
         Label array of shape [len(raw_file_list)*crop_num, 384, 384, 1]
 
     '''
-        inputs_rgbs_lst = []
+    inputs_rgbs_lst = []
     label_raws_lst = []
     p = Pool(8)
 
