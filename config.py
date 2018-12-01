@@ -23,10 +23,10 @@ config.TRAIN.decay_every = int(config.TRAIN.n_epoch / 2)
 ## set_dir
 config.TRAIN.training_dir = 'training_dir'
 config.TRAIN.pretrain_checkpoint = 'checkpoint'
-config.TRAIN.train_data_dir = 'test_data'
+config.TRAIN.train_data_dir = 'dataset/Sony/Sony/short'
 
-config.TRAIN.batch_size = 1
-config.TRAIN.crop_num = 1
+config.TRAIN.batch_size = 16
+config.TRAIN.crop_num = 4
 
 ## train set location
 # config.TRAIN.hr_img_path = 'data2017/DIV2K_train_HR/'
