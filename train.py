@@ -106,7 +106,7 @@ def train():
     ###============================= TRAINING ===============================###
 
     # load file list
-    train_data_list = tl.files.load_file_list(train_data_dir, regx = '.*.arw', printable = False)
+    train_data_list = sorted(tl.files.load_file_list(train_data_dir, regx = '^0.*.ARW', printable = False))
 
     sess.run(tf.assign(lr_v, lr_init))
     print(" ** fixed learning rate: %f (for init G)" % lr_init)
