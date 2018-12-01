@@ -98,7 +98,8 @@ def train():
 
     tl.layers.initialize_global_variables(sess)
     if tl.files.load_and_assign_npz(sess=sess, name=training_dir + '/g_srgan.npz', network=net_g) is None:
-        load_pretrain_model(sess=sess, npz_file=pretrain_checkpoint + '/g_srgan.npz', network=net_g)
+        if tl.files.load_and_assign_npz(sess=sess, name=training_dir + '/g_srgan_init.npz', network=net_g) is None:
+            load_pretrain_model(sess=sess, npz_file=pretrain_checkpoint + '/g_srgan.npz', network=net_g)
     tl.files.load_and_assign_npz(sess=sess, name=training_dir + '/d_srgan.npz', network=net_d)
 
 
