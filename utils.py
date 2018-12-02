@@ -17,6 +17,8 @@ def get_inputs_labels(p, file_dir, raw_file_list, crop_num, crop_size=384):
     '''
     Parameters
     ----------
+    p : multiprocessing.Pool
+        Pool instance for multiprocessing
     file_dir : str
         Data dir.
     raw_file_list : list
