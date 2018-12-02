@@ -38,18 +38,23 @@ training_dir = config.TRAIN.training_dir
 pretrain_checkpoint = config.TRAIN.pretrain_checkpoint
 train_data_dir = config.TRAIN.train_data_dir
 dark_model_dir = config.TRAIN.dark_model_dir
+training_exam_dir = config.TRAIN.training_exam_dir
 
 
 crop_num = config.TRAIN.crop_num
+sample_img_size = config.TRAIN.sample_img_size
+sample_lst = config.TRAIN.sample_lst
 
 tl.files.exists_or_mkdir(training_dir)
 tl.files.exists_or_mkdir(pretrain_checkpoint)
+tl.files.exists_or_mkdir(training_exam_dir)
 
 
 def train():
     ###========================== DEFINE MODEL ============================###
     ## train inference
     t_image = tf.placeholder('float32', [None, 96, 96, 3], name='t_image_input_to_SRGAN_generator')
+    t_image_sample = tf.placeholder('float32', [None, None, None, 3], name='t_image_sample_to_SRGAN_g_test')
     t_target_image = tf.placeholder('float32', [None, 384, 384, 1], name='t_target_image')
 
     net_g = SRGAN_g(t_image, is_train=True, reuse=False)
@@ -64,8 +69,11 @@ def train():
     # net_d.print_layers()
 
     ## test inference
-    net_g_test = SRGAN_g(t_image, is_train=False, reuse=True)
+    net_g_test = SRGAN_g(t_image_sample, is_train=False, reuse=True)
 
+    ## dark model
+    t_raw_for_dark = tf.placeholder(tf.float32, [None, None, None, 4])
+    out_image = dark_network(t_raw_for_dark)
 
     # ###========================= DEFINE TRAIN OPS =========================###
     d_loss1 = tl.cost.sigmoid_cross_entropy(logits_real, tf.ones_like(logits_real), name='d1')
@@ -103,12 +111,50 @@ def train():
             load_pretrain_model(sess=sess, npz_file=pretrain_checkpoint + '/g_srgan.npz', network=net_g)
     tl.files.load_and_assign_npz(sess=sess, name=training_dir + '/d_srgan.npz', network=net_d)
 
+    ## restore the dark model
+    var_dict = dark_model_var_dict(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='DARK'))
+    saver = tf.train.Saver(var_dict)
+    ckpt = tf.train.get_checkpoint_state(dark_model_dir)
+    if ckpt:
+        print('loaded ' + ckpt.model_checkpoint_path)
+        saver.restore(sess, ckpt.model_checkpoint_path)
+
+    ###========================== SELECT SAMPLE =============================###
+    # 3 thread to read the dataset
+    p = Pool(3)
+    # load file list
+    train_data_list = sorted(tl.files.load_file_list(train_data_dir, regx = '^0.*.ARW', printable = False))
+
+    ni = int(np.sqrt(len(sample_lst)))
+    sample_file_name = [train_data_list[i] for i in sample_lst]
+
+    rgb_sample, raw_sample = get_inputs_labels(p = p,
+                                              file_dir = train_data_dir,
+                                              raw_file_list = sample_file_name,
+                                              crop_num = None,
+                                              crop_size = sample_img_size)
+
+    # save rgb x 200 ratio
+    rgb_sample_x200 = (rgb_sample + 1) * 200
+    rgb_sample_x200 = (np.minimum(rgb_sample_x200, 2) * 127.5).astype(np.uint8)
+
+    rgb_sample_out_filename = training_dir + os.path.sep + 'rgb_sample.png'
+    if not os.path.exists(rgb_sample_out_filename):
+        tl.vis.save_images(rgb_sample_x200, [ni, ni], rgb_sample_out_filename)
+
+    # save raw x 200 through dark model
+    raw_sample = pack_raw_matrix(raw_sample) * 200
+    label_raw_sample = sess.run(out_image, feed_dict={t_raw_for_dark: raw_sample})
+    label_raw_sample = np.minimum(np.maximum(label_raw_sample, 0), 1)
+    label_raw_sample = (label_raw_sample * 255).astype(np.uint8)
+
+    label_raw_sample_out_file_name = training_dir + os.path.sep + 'label_raw_sample.png'
+    if not os.path.exists(label_raw_sample_out_file_name):
+        tl.vis.save_images(label_raw_sample, [ni, ni], label_raw_sample_out_file_name)
+
 
     ###============================= TRAINING ===============================###
 
-    # load file list
-    train_data_list = sorted(tl.files.load_file_list(train_data_dir, regx = '^0.*.ARW', printable = False))
-    p = Pool(3) # 3 thread to read the dataset
     sess.run(tf.assign(lr_v, lr_init))
     print(" ** fixed learning rate: %f (for init G)" % lr_init)
 
@@ -135,10 +181,17 @@ def train():
         print(log)
 
         ## quick evaluation on train set
-    #     if (epoch != 0) and (epoch % 10 == 0):
-    #         out = sess.run(net_g_test.outputs, {t_image: sample_imgs_96})  #; print('gen sub-image:', out.shape, out.min(), out.max())
-    #         print("[*] save images")
-    #         tl.vis.save_images(out, [ni, ni], save_dir_ginit + '/train_%d.png' % epoch)
+        if (epoch != 0) and (epoch % 2 == 0):
+            sample_out = sess.run(net_g_test.outputs, {t_image_sample: rgb_sample})
+            sample_out = pack_raw_matrix(sample_out) * 200
+
+            train_raw_sample = sess.run(out_image, feed_dict={t_raw_for_dark: sample_out})
+            train_raw_sample = np.minimum(np.maximum(train_raw_sample, 0), 1)
+            train_raw_sample = (train_raw_sample * 255).astype(np.uint8)
+            train_raw_sample_out_file_name = training_dir + os.path.sep + '/train_raw_sample_%d.png' % epoch
+
+            print("[*] save images")
+            tl.vis.save_images(train_raw_sample, [ni, ni], train_raw_sample_out_file_name)
 
         ## save model
         if (epoch != 0) and (epoch % 2 == 0):
@@ -183,10 +236,17 @@ def train():
         print(log)
 
         ## quick evaluation on train set
-#         if (epoch != 0) and (epoch % 10 == 0):
-#             out = sess.run(net_g_test.outputs, {t_image: sample_imgs_96})  #; print('gen sub-image:', out.shape, out.min(), out.max())
-#             print("[*] save images")
-#             tl.vis.save_images(out, [ni, ni], save_dir_gan + '/train_%d.png' % epoch)
+        if (epoch != 0) and (epoch % 2 == 0):
+            sample_out = sess.run(net_g_test.outputs, {t_image_sample: rgb_sample})
+            sample_out = pack_raw_matrix(sample_out) * 200
+
+            train_raw_sample = sess.run(out_image, feed_dict={t_raw_for_dark: sample_out})
+            train_raw_sample = np.minimum(np.maximum(train_raw_sample, 0), 1)
+            train_raw_sample = (train_raw_sample * 255).astype(np.uint8)
+            train_raw_sample_out_file_name = training_dir + os.path.sep + '/train_raw_sample_%d(GAN).png' % epoch
+
+            print("[*] save images")
+            tl.vis.save_images(train_raw_sample, [ni, ni], train_raw_sample_out_file_name)
 
         ## save model
         if (epoch != 0) and (epoch % 2 == 0):
