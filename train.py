@@ -138,7 +138,7 @@ def train():
     rgb_sample_x200 = (rgb_sample + 1) * 200
     rgb_sample_x200 = (np.minimum(rgb_sample_x200, 2) * 127.5).astype(np.uint8)
 
-    rgb_sample_out_filename = training_dir + os.path.sep + 'rgb_sample.png'
+    rgb_sample_out_filename = training_exam_dir + os.path.sep + 'rgb_sample.png'
     if not os.path.exists(rgb_sample_out_filename):
         tl.vis.save_images(rgb_sample_x200, [ni, ni], rgb_sample_out_filename)
 
@@ -148,7 +148,7 @@ def train():
     label_raw_sample = np.minimum(np.maximum(label_raw_sample, 0), 1)
     label_raw_sample = (label_raw_sample * 255).astype(np.uint8)
 
-    label_raw_sample_out_file_name = training_dir + os.path.sep + 'label_raw_sample.png'
+    label_raw_sample_out_file_name = training_exam_dir + os.path.sep + 'label_raw_sample.png'
     if not os.path.exists(label_raw_sample_out_file_name):
         tl.vis.save_images(label_raw_sample, [ni, ni], label_raw_sample_out_file_name)
 
@@ -188,7 +188,7 @@ def train():
             train_raw_sample = sess.run(out_image, feed_dict={t_raw_for_dark: sample_out})
             train_raw_sample = np.minimum(np.maximum(train_raw_sample, 0), 1)
             train_raw_sample = (train_raw_sample * 255).astype(np.uint8)
-            train_raw_sample_out_file_name = training_dir + os.path.sep + '/train_raw_sample_%d.png' % epoch
+            train_raw_sample_out_file_name = training_exam_dir + os.path.sep + '/train_raw_sample_%d.png' % epoch
 
             print("[*] save images")
             tl.vis.save_images(train_raw_sample, [ni, ni], train_raw_sample_out_file_name)
@@ -243,7 +243,7 @@ def train():
             train_raw_sample = sess.run(out_image, feed_dict={t_raw_for_dark: sample_out})
             train_raw_sample = np.minimum(np.maximum(train_raw_sample, 0), 1)
             train_raw_sample = (train_raw_sample * 255).astype(np.uint8)
-            train_raw_sample_out_file_name = training_dir + os.path.sep + '/train_raw_sample_%d(GAN).png' % epoch
+            train_raw_sample_out_file_name = training_exam_dir + os.path.sep + '/train_raw_sample_%d(GAN).png' % epoch
 
             print("[*] save images")
             tl.vis.save_images(train_raw_sample, [ni, ni], train_raw_sample_out_file_name)
