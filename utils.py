@@ -122,6 +122,7 @@ def get_one_example(file, crop_size = 384, output_num = 4):
         rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
         rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])
         rgb_matrix = np.minimum((rgb_matrix / 255.0 * 200), 1.0)
+        rgb_matrix = rgb_matrix * 2 - 1
         rgbs[i] = rgb_matrix
 
         raw_matrix = raw_full[yy:yy + crop_size, xx:xx + crop_size]
@@ -166,6 +167,7 @@ def get_one_example_fix_crop(file, crop_size = 384):
     rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
     rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])
     rgb_matrix = np.minimum((rgb_matrix / 255.0 * 200), 1.0)
+    rgb_matrix = rgb_matrix * 2 - 1
     rgb_matrix = np.expand_dims(np.float32(rgb_matrix), axis=0)
 
     raw_matrix = raw_full[yy:yy + crop_size, xx:xx + crop_size]
