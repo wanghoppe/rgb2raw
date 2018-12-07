@@ -53,27 +53,46 @@ tl.files.exists_or_mkdir(training_exam_dir)
 def train():
     ###========================== DEFINE MODEL ============================###
     ## train inference
-    t_image = tf.placeholder('float32', [None, 96, 96, 3], name='t_image_input_to_SRGAN_generator')
-    t_image_sample = tf.placeholder('float32', [None, None, None, 3], name='t_image_sample_to_SRGAN_g_test')
-    t_target_image = tf.placeholder('float32', [None, 384, 384, 1], name='t_target_image')
+    # feed_forward generator
+    rgb_96_input = tf.placeholder('float32', [None, 96, 96, 3], name='rgb_96_to_SRGAN_generator')
+    net_g = SRGAN_g(rgb_96_input, is_train=True, reuse=False)
+    rgb_384_output = dark_network((net_g.outputs + 1)/2, reuse = False)
+    # label
+    raw_384 = tf.placeholder('float32', [None, 192, 192, 4], name='raw_384_label')
+    rgb_384_label = dark_network(raw_384, reuse = True)
 
-    net_g = SRGAN_g(t_image, is_train=True, reuse=False)
-    net_d, logits_real = SRGAN_d(t_target_image, is_train=True, reuse=False)
-    _, logits_fake = SRGAN_d(net_g.outputs, is_train=True, reuse=True)
 
-    # net_g.print_params(False)￼
+    # sample_generator
+    rgb_96_sample = tf.placeholder('float32', [None, None, None, 3], name='rgb_96_sample_to_SRGAN_g_test')
+    net_g_test = SRGAN_g(rgb_96_sample, is_train=False, reuse=True)
+    rgb_384_sample = dark_network((net_g_test.outputs + 1)/2, reuse = True)
+
+    raw_384_sample = tf.placeholder('float32', [None, None, None, 4], name='raw_384_sample')
+    rgb_384_sample_from_raw = dark_network(raw_384_sample, reuse = True)
+
+    # discriminator
+    net_d, logits_real = SRGAN_d(rgb_384_label, is_train=True, reuse=False)
+    _, logits_fake = SRGAN_d(rgb_384_output, is_train=True, reuse=True)
+
+    # VGG
+    rgb_224_label = tf.image.resize_images(
+            rgb_384_label,
+            size=[224, 224],
+            method=0,
+            align_corners=False)
+
+    rgb_224_output = tf.image.resize_images(
+            rgb_384_output,
+            size=[224, 224],
+            method=0,
+            align_corners=False)
+
+    net_vgg, vgg_target_emb = Vgg19_simple_api(rgb_224_label, reuse=False)
+    _, vgg_predict_emb = Vgg19_simple_api(rgb_224_output, reuse=True)
 
     net_g.print_params(False)
     # net_g.print_layers()
     net_d.print_params(False)
-    # net_d.print_layers()
-
-    ## test inference
-    net_g_test = SRGAN_g(t_image_sample, is_train=False, reuse=True)
-
-    ## dark model
-    t_raw_for_dark = tf.placeholder(tf.float32, [None, None, None, 4])
-    out_image = dark_network(t_raw_for_dark)
 
     # ###========================= DEFINE TRAIN OPS =========================###
     d_loss1 = tl.cost.sigmoid_cross_entropy(logits_real, tf.ones_like(logits_real), name='d1')
@@ -81,11 +100,11 @@ def train():
     d_loss = d_loss1 + d_loss2
 
     g_gan_loss = 1e-3 * tl.cost.sigmoid_cross_entropy(logits_fake, tf.ones_like(logits_fake), name='g')
-    mse_loss = tl.cost.mean_squared_error(net_g.outputs, t_target_image, is_mean=True)
-    # vgg_loss = 2e-6 * tl.cost.mean_squared_error(vgg_predict_emb.outputs, vgg_target_emb.outputs, is_mean=True)
+    mse_loss = tl.cost.mean_squared_error(rgb_384_output, rgb_384_label, is_mean=True)
+    vgg_loss = 2e-6 * tl.cost.mean_squared_error(vgg_predict_emb.outputs, vgg_target_emb.outputs, is_mean=True)
 
-    # g_loss = mse_loss + vgg_loss + g_gan_loss
-    g_loss = mse_loss + g_gan_loss
+    g_loss = mse_loss + vgg_loss + g_gan_loss
+    # g_loss = mse_loss + g_gan_loss
 
     g_vars = tl.layers.get_variables_with_name('SRGAN_g', True, True)
     d_vars = tl.layers.get_variables_with_name('SRGAN_d', True, True)
@@ -113,11 +132,58 @@ def train():
 
     ## restore the dark model
     var_dict = dark_model_var_dict(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='DARK'))
+    var_dict_1 = {
+        'Variable': var_dict['1/Variable'],
+        'Variable_1': var_dict['1/Variable_1'],
+        'Variable_2': var_dict['1/Variable_2'],
+        'Variable_3': var_dict['1/Variable_3']
+    }
+    var_dict_2 = {
+        'Variable': var_dict['2/Variable'],
+        'Variable_1': var_dict['2/Variable_1'],
+        'Variable_2': var_dict['2/Variable_2'],
+        'Variable_3': var_dict['2/Variable_3']
+    }
+    var_dict_3 = {
+        'Variable': var_dict['3/Variable'],
+        'Variable_1': var_dict['3/Variable_1'],
+        'Variable_2': var_dict['3/Variable_2'],
+        'Variable_3': var_dict['3/Variable_3']
+    }
+    for i in range(1,4):
+        var_dict.pop('%i/Variable' % i)
+        var_dict.pop('%i/Variable_1' % i)
+        var_dict.pop('%i/Variable_2' % i)
+        var_dict.pop('%i/Variable_3' % i)
+
+    #load the pre-train dark model
     saver = tf.train.Saver(var_dict)
+    saver_1 = tf.train.Saver(var_dict_1)
+    saver_2 = tf.train.Saver(var_dict_2)
+    saver_3 = tf.train.Saver(var_dict_3)
+
     ckpt = tf.train.get_checkpoint_state(dark_model_dir)
     if ckpt:
         print('loaded ' + ckpt.model_checkpoint_path)
         saver.restore(sess, ckpt.model_checkpoint_path)
+        saver_1.restore(sess, ckpt.model_checkpoint_path)
+        saver_2.restore(sess, ckpt.model_checkpoint_path)
+        saver_3.restore(sess, ckpt.model_checkpoint_path)
+
+    # load vgg-model
+    vgg19_npy_path = "vgg19.npy"
+    if not os.path.isfile(vgg19_npy_path):
+        print("Please download vgg19.npz from : https://github.com/machrisaa/tensorflow-vgg")
+        exit()
+    npz = np.load(vgg19_npy_path, encoding='latin1').item()
+
+    params = []
+    for val in sorted(npz.items()):
+        W = np.asarray(val[1][0])
+        b = np.asarray(val[1][1])
+        print("  Loading %s: %s, %s" % (val[0], W.shape, b.shape))
+        params.extend([W, b])
+    tl.files.assign_params(sess, params, net_vgg)
 
     ###========================== SELECT SAMPLE =============================###
     # 3 thread to read the dataset
@@ -135,18 +201,16 @@ def train():
                                               crop_size = sample_img_size)
 
     # save rgb x 200 ratio
-    rgb_sample_x200 = (rgb_sample + 1) * 200
-    rgb_sample_x200 = (np.minimum(rgb_sample_x200, 2) * 127.5).astype(np.uint8)
+    rgb_sample_out = ((rgb_sample+1)/2 * 255)
 
     rgb_sample_out_filename = training_exam_dir + os.path.sep + 'rgb_sample.png'
     if not os.path.exists(rgb_sample_out_filename):
-        tl.vis.save_images(rgb_sample_x200, [ni, ni], rgb_sample_out_filename)
+        tl.vis.save_images(rgb_sample_out, [ni, ni], rgb_sample_out_filename)
 
     # save raw x 200 through dark model
-    raw_sample = pack_raw_matrix(raw_sample) * 200
-    label_raw_sample = sess.run(out_image, feed_dict={t_raw_for_dark: raw_sample})
+    label_raw_sample = sess.run(rgb_384_sample_from_raw, feed_dict={raw_384_sample: raw_sample})
     label_raw_sample = np.minimum(np.maximum(label_raw_sample, 0), 1)
-    label_raw_sample = (label_raw_sample * 255).astype(np.uint8)
+    label_raw_sample = (label_raw_sample * 255)
 
     label_raw_sample_out_file_name = training_exam_dir + os.path.sep + 'label_raw_sample.png'
     if not os.path.exists(label_raw_sample_out_file_name):
@@ -173,7 +237,7 @@ def train():
             inputs_rgbs, label_raws = get_inputs_labels(p, train_data_dir, batch_file_name, crop_num)
 
             ## update G
-            errM, _ = sess.run([mse_loss, g_optim_init], {t_image: inputs_rgbs, t_target_image: label_raws})
+            errM, _ = sess.run([mse_loss, g_optim_init], {rgb_96_input: inputs_rgbs, raw_384: label_raws})
             print("Epoch [%2d/%2d] %4d time: %4.4fs, mse: %.8f " % (epoch, n_epoch_init, n_iter, time.time() - step_time, errM))
             total_mse_loss += errM
             n_iter += 1
@@ -182,16 +246,14 @@ def train():
 
         ## quick evaluation on train set
         if (epoch != 0) and (epoch % 2 == 0):
-            sample_out = sess.run(net_g_test.outputs, {t_image_sample: rgb_sample})
-            sample_out = pack_raw_matrix(sample_out) * 200
+            sample_out = sess.run(rgb_384_sample, {rgb_96_sample: rgb_sample})
+            sample_out = np.minimum(np.maximum(sample_out, 0), 1)
+            sample_out = (sample_out * 255)
 
-            train_raw_sample = sess.run(out_image, feed_dict={t_raw_for_dark: sample_out})
-            train_raw_sample = np.minimum(np.maximum(train_raw_sample, 0), 1)
-            train_raw_sample = (train_raw_sample * 255).astype(np.uint8)
             train_raw_sample_out_file_name = training_exam_dir + os.path.sep + '/train_raw_sample_%d.png' % epoch
 
             print("[*] save images")
-            tl.vis.save_images(train_raw_sample, [ni, ni], train_raw_sample_out_file_name)
+            tl.vis.save_images(sample_out, [ni, ni], train_raw_sample_out_file_name)
 
         ## save model
         if (epoch != 0) and (epoch % 2 == 0):
@@ -219,14 +281,14 @@ def train():
         for idx in range(0, len(train_data_list), batch_size):
             step_time = time.time()
             batch_file_name = train_data_list[idx: idx+batch_size]
-            inputs_rgbs, label_raws = get_inputs_labels(train_data_dir, batch_file_name, 2)
+            inputs_rgbs, label_raws = get_inputs_labels(train_data_dir, batch_file_name, crop_num)
             ## update D
-            errD, _ = sess.run([d_loss, d_optim], {t_image: inputs_rgbs, t_target_image: label_raws})
+            errD, _ = sess.run([d_loss, d_optim], {rgb_96_input: inputs_rgbs, raw_384: label_raws})
             ## update G
-            errG, errM, errA, _ = sess.run([g_loss, mse_loss, g_gan_loss, g_optim],
-                                                 {t_image: inputs_rgbs, t_target_image: label_raws})
-            print("Epoch [%2d/%2d] %4d time: %4.4fs, d_loss: %.8f g_loss: %.8f (mse: %.6f adv: %.6f)" %
-                  (epoch, n_epoch, n_iter, time.time() - step_time, errD, errG, errM, errA))
+            errG, errM, errV, errA, _ = sess.run([g_loss, mse_loss, vgg_loss, g_gan_loss, g_optim],
+                                                 {rgb_96_input: inputs_rgbs, raw_384: label_raws})
+            print("Epoch [%2d/%2d] %4d time: %4.4fs, d_loss: %.8f g_loss: %.8f (mse: %.6f vgg: %.6f adv: %.6f)" %
+                  (epoch, n_epoch, n_iter, time.time() - step_time, errD, errG, errM, errV, errA))
             total_d_loss += errD
             total_g_loss += errG
             n_iter += 1
@@ -237,16 +299,14 @@ def train():
 
         ## quick evaluation on train set
         if (epoch != 0) and (epoch % 2 == 0):
-            sample_out = sess.run(net_g_test.outputs, {t_image_sample: rgb_sample})
-            sample_out = pack_raw_matrix(sample_out) * 200
+            sample_out = sess.run(rgb_384_sample, {rgb_96_sample: rgb_sample})
+            sample_out = np.minimum(np.maximum(sample_out, 0), 1)
+            sample_out = (sample_out * 255)
 
-            train_raw_sample = sess.run(out_image, feed_dict={t_raw_for_dark: sample_out})
-            train_raw_sample = np.minimum(np.maximum(train_raw_sample, 0), 1)
-            train_raw_sample = (train_raw_sample * 255).astype(np.uint8)
             train_raw_sample_out_file_name = training_exam_dir + os.path.sep + '/train_raw_sample_%d(GAN).png' % epoch
 
             print("[*] save images")
-            tl.vis.save_images(train_raw_sample, [ni, ni], train_raw_sample_out_file_name)
+            tl.vis.save_images(sample_out, [ni, ni], train_raw_sample_out_file_name)
 
         ## save model
         if (epoch != 0) and (epoch % 2 == 0):

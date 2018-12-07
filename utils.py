@@ -161,8 +161,8 @@ def get_one_example_fix_crop(file, crop_size = 384):
     H = raw_full.shape[0]
     W = raw_full.shape[1]
 
-    xx = 500
-    yy = 500
+    xx = 1000
+    yy = 1000
 
     rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
     rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])

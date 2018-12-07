@@ -23,8 +23,8 @@ def upsample_and_concat(x1, x2, output_channels, in_channels):
     return deconv_output
 
 
-def dark_network(input):
-    with tf.variable_scope("DARK") as vs:
+def dark_network(input, reuse):
+    with tf.variable_scope("DARK", reuse = reuse) as vs:
         conv1 = slim.conv2d(input, 32, [3, 3], rate=1, activation_fn=lrelu, scope='g_conv1_1')
         conv1 = slim.conv2d(conv1, 32, [3, 3], rate=1, activation_fn=lrelu, scope='g_conv1_2')
         pool1 = slim.max_pool2d(conv1, [2, 2], padding='SAME')
