@@ -130,6 +130,7 @@ def get_one_example(file, crop_size = 384, output_num = 4):
         raw_matrix = np.minimum((raw_matrix * 200), 1.0)
 #         print(raw_matrix.shape)
         raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=2)
+        raw_matrix = pack_raw_matrix(raw_matrix)
         raws[i] = raw_matrix
 
     return raws, rgbs
@@ -174,6 +175,7 @@ def get_one_example_fix_crop(file, crop_size = 384):
 #         print(raw_matrix.shape)
     raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=2)
     raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=0)
+    raw_matrix = pack_raw_matrix(raw_matrix)
 
     return raw_matrix, rgb_matrix
 
