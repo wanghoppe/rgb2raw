@@ -121,12 +121,13 @@ def get_one_example(file, crop_size = 384, output_num = 4):
 
         rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
         rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])
-        rgb_matrix = rgb_matrix / 127.5 - 1
+        rgb_matrix = np.minimum((rgb_matrix / 255.0 * 200), 1.0)
         rgbs[i] = rgb_matrix
 
         raw_matrix = raw_full[yy:yy + crop_size, xx:xx + crop_size]
 #         raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
-        raw_matrix = raw_matrix / (16383.0/ 2.0) - 1
+        raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
+        raw_matrix = np.minimum((raw_matrix * 200), 1.0)
 #         print(raw_matrix.shape)
         raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=2)
         raws[i] = raw_matrix
@@ -163,12 +164,13 @@ def get_one_example_fix_crop(file, crop_size = 384):
 
     rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
     rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])
-    rgb_matrix = rgb_matrix / 127.5 - 1
+    rgb_matrix = np.minimum((rgb_matrix / 255.0 * 200), 1.0)
     rgb_matrix = np.expand_dims(np.float32(rgb_matrix), axis=0)
 
     raw_matrix = raw_full[yy:yy + crop_size, xx:xx + crop_size]
 #         raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
-    raw_matrix = raw_matrix / (16383.0/ 2.0) - 1
+    raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
+    raw_matrix = np.minimum((raw_matrix * 200), 1.0)
 #         print(raw_matrix.shape)
     raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=2)
     raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=0)
@@ -178,8 +180,6 @@ def get_one_example_fix_crop(file, crop_size = 384):
 def pack_raw_matrix(im):
     # pack Bayer image to 4 channels
 #     im = raw.raw_image_visible.astype(np.float32)
-    im = (im + 1) * (16383.0/ 2.0)
-    im = np.maximum(im - 512, 0) / (16383 - 512)  # subtract the black level
 
 #     im = np.expand_dims(matrix, axis=)
     img_shape = im.shape
