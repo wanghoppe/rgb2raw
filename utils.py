@@ -102,7 +102,7 @@ def get_one_example(file, crop_size = 384, output_num = 4):
     rgb_full = raw.postprocess(use_camera_wb=True,
                           half_size=False,
                           no_auto_bright=True,
-                          output_bps=8,
+                          output_bps=16,
                           user_flip = 0)
 
 #     print(rgb.shape)
@@ -112,18 +112,30 @@ def get_one_example(file, crop_size = 384, output_num = 4):
     H = raw_full.shape[0]
     W = raw_full.shape[1]
 
-    rgbs = np.zeros([output_num, int(crop_size/4), int(crop_size/4), 3])
-    raws = np.zeros([output_num, crop_size, crop_size, 1])
+    rgbs = []
+    raws = []
 
     for i in range(output_num):
         xx = np.random.randint(0, W - crop_size)
+        if not xx % 2 == 0:
+            xx -= 1
         yy = np.random.randint(0, H - crop_size)
+        if not yy % 2 == 0:
+            yy -= 1
 
         rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
+
+        # X200 and rescale to [0,1]
+        rgb_matrix = np.minimum(rgb_matrix/ 65535 * 200, 1.0)
+
+        # rescale to [0, 255] and resize to 1/4
+        rgb_matrix = rgb_matrix * 255
         rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])
-        rgb_matrix = np.minimum((rgb_matrix / 255.0 * 200), 1.0)
-        rgb_matrix = rgb_matrix * 2 - 1
-        rgbs[i] = rgb_matrix
+
+        # rescale to [-1, 1]
+        rgb_matrix = (rgb_matrix / 127.5) - 1
+        rgb_matrix = np.expand_dims(np.float32(rgb_matrix), axis=0)
+        rgbs.append(rgb_matrix)
 
         raw_matrix = raw_full[yy:yy + crop_size, xx:xx + crop_size]
 #         raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
@@ -131,10 +143,14 @@ def get_one_example(file, crop_size = 384, output_num = 4):
         raw_matrix = np.minimum((raw_matrix * 200), 1.0)
 #         print(raw_matrix.shape)
         raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=2)
+        raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=0)
         raw_matrix = pack_raw_matrix(raw_matrix)
-        raws[i] = raw_matrix
+        raws.append(raw_matrix)
 
-    return raws, rgbs
+    rgbs_return = np.concatenate(rgbs, axis=0)
+    raws_return = np.concatenate(raws, axis=0)
+
+    return raws_return, rgbs_return
 
 def get_one_example_fix_crop(file, crop_size = 384):
     '''
@@ -151,7 +167,7 @@ def get_one_example_fix_crop(file, crop_size = 384):
     rgb_full = raw.postprocess(use_camera_wb=True,
                           half_size=False,
                           no_auto_bright=True,
-                          output_bps=8,
+                          output_bps=16,
                           user_flip = 0)
 
 #     print(rgb.shape)
@@ -165,11 +181,21 @@ def get_one_example_fix_crop(file, crop_size = 384):
     yy = 1000
 
     rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
+
+    # X200 and rescale to [0,1]
+    rgb_matrix = np.minimum(rgb_matrix/ 65535 * 200, 1.0)
+
+    # rescale to [0, 255] and resize to 1/4
+    rgb_matrix = rgb_matrix * 255
     rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])
-    rgb_matrix = np.minimum((rgb_matrix / 255.0 * 200), 1.0)
-    rgb_matrix = rgb_matrix * 2 - 1
+
+    # rescale to [-1, 1]
+    rgb_matrix = (rgb_matrix / 127.5) - 1
+
     rgb_matrix = np.expand_dims(np.float32(rgb_matrix), axis=0)
 
+
+    ## For raw
     raw_matrix = raw_full[yy:yy + crop_size, xx:xx + crop_size]
 #         raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
     raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
