@@ -15,6 +15,7 @@ from multiprocessing import Pool
 
 from model import *
 from utils import *
+from dark_utils import *
 
 
 
@@ -230,6 +231,9 @@ def train():
         epoch_time = time.time()
         total_mse_loss, n_iter = 0, 0
 
+        # random shuffle the dataset
+        np.random.shuffle(train_data_list)
+
         for idx in range(0, len(train_data_list), batch_size):
             step_time = time.time()
 
@@ -278,10 +282,13 @@ def train():
         epoch_time = time.time()
         total_d_loss, total_g_loss, n_iter = 0, 0, 0
 
+        # random shuffle the dataset
+        np.random.shuffle(train_data_list)
+
         for idx in range(0, len(train_data_list), batch_size):
             step_time = time.time()
             batch_file_name = train_data_list[idx: idx+batch_size]
-            inputs_rgbs, label_raws = get_inputs_labels(train_data_dir, batch_file_name, crop_num)
+            inputs_rgbs, label_raws = get_inputs_labels(p, train_data_dir, batch_file_name, crop_num)
             ## update D
             errD, _ = sess.run([d_loss, d_optim], {rgb_96_input: inputs_rgbs, raw_384: label_raws})
             ## update G
@@ -310,7 +317,7 @@ def train():
 
         ## save model
         if (epoch != 0) and (epoch % 2 == 0):
-            tl.files.save_npz(net_g.all_params, name=training_dir + '/g_srgan.npz'.format(tl.global_flag['mode']), sess=sess)
-            tl.files.save_npz(net_d.all_params, name=training_dir + '/d_srgan.npz'.format(tl.global_flag['mode']), sess=sess)
+            tl.files.save_npz(net_g.all_params, name=training_dir + '/g_srgan.npz', sess=sess)
+            tl.files.save_npz(net_d.all_params, name=training_dir + '/d_srgan.npz', sess=sess)
 if __name__ == '__main__':
     train()
