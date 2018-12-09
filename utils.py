@@ -126,7 +126,7 @@ def get_one_example(file, crop_size = 384, output_num = 4):
         rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
 
         # X200 and rescale to [0,1]
-        rgb_matrix = np.minimum(rgb_matrix/ 65535 * 200, 1.0)
+        rgb_matrix = np.minimum(rgb_matrix/ 65535 * 100, 1.0)
 
         # rescale to [0, 255] and resize to 1/4
         rgb_matrix = rgb_matrix * 255
@@ -183,7 +183,7 @@ def get_one_example_fix_crop(file, crop_size = 384):
     rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
 
     # X200 and rescale to [0,1]
-    rgb_matrix = np.minimum(rgb_matrix/ 65535 * 200, 1.0)
+    rgb_matrix = np.minimum(rgb_matrix/ 65535 * 100, 1.0)
 
     # rescale to [0, 255] and resize to 1/4
     rgb_matrix = rgb_matrix * 255
