@@ -13,7 +13,8 @@ from multiprocessing import Pool
 from functools import partial
 
 
-def get_inputs_labels(p, file_dir, raw_file_list, crop_num, crop_size=384):
+def get_inputs_labels(p, gt_lst, train_label_dir, train_data_dir, dataset_dict,
+                        data_num = None, crop_num = None, crop_size = 384):
     '''
     Parameters
     ----------
@@ -34,27 +35,37 @@ def get_inputs_labels(p, file_dir, raw_file_list, crop_num, crop_size=384):
         Label array of shape [len(raw_file_list)*crop_num, 384, 384, 1]
 
     '''
-    inputs_rgbs_lst = []
-    label_raws_lst = []
+    ins_lst = []
+    gts_lst = []
     # p = Pool(3)
 
     if not crop_num == None:
-        p_func = partial(get_one_example, crop_size=crop_size, output_num=crop_num)
+        p_func = partial(get_one_example,
+                            train_label_dir = train_label_dir,
+                            train_data_dir = train_data_dir,
+                            dataset_dict = dataset_dict,
+                            data_num = data_num,
+                            crop_num = crop_num,
+                            crop_size = crop_size)
     else:
-        p_func = partial(get_one_example_fix_crop, crop_size=crop_size)
+        p_func = partial(get_one_example_fix_crop,
+                            train_label_dir = train_label_dir,
+                            train_data_dir = train_data_dir,
+                            dataset_dict = dataset_dict,
+                            crop_size = crop_size)
 
-    lst = p.map(p_func, [file_dir + os.path.sep + i for i in raw_file_list])
+    lst = p.map(p_func, gt_lst)
 
     # del(p)
 
     for a, b in lst:
-        inputs_rgbs_lst.append(b)
-        label_raws_lst.append(a)
+        ins_lst.append(b)
+        gts_lst.append(a)
 
-    inputs_rgbs = np.concatenate(inputs_rgbs_lst, axis=0)
-    label_raws = np.concatenate(label_raws_lst, axis=0)
+    ins = np.concatenate(ins_lst, axis=0)
+    gts = np.concatenate(gts_lst, axis=0)
 
-    return inputs_rgbs, label_raws
+    return ins, gts
 
 def load_pretrain_model(sess, npz_file, network):
     '''
@@ -159,7 +170,7 @@ def get_one_example(gt_fn, train_label_dir, train_data_dir, dataset_dict,
 
 
 def get_one_example_fix_crop(gt_fn, train_label_dir, train_data_dir, dataset_dict,
-                     crop_size = 384):
+                     crop_size = 1000):
 
 
     raw_label = rawpy.imread(train_label_dir + os.path.sep + gt_fn)
