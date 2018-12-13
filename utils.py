@@ -87,35 +87,58 @@ def load_pretrain_model(sess, npz_file, network):
         # print('yes'*1000)
     return network
 
-def get_one_example(file, crop_size = 384, output_num = 4):
-    '''
-    Read a raw image, ramdomly croped
-    return:
-    1, raws:
-        output_numx384x384x1 RAW
-    2, rgbs:
-        output_numx96x96x3 RGB
-    '''
+def get_one_example(gt_fn, train_label_dir, train_data_dir, dataset_dict,
+                    data_num = 2, crop_num = 4, crop_size = 384):
 
-    raw = rawpy.imread(file)
-    raw_full = raw.raw_image_visible.astype(np.float32)
-    rgb_full = raw.postprocess(use_camera_wb=True,
-                          half_size=False,
-                          no_auto_bright=True,
-                          output_bps=16,
-                          user_flip = 0)
 
-#     print(rgb.shape)
-#     print(raw.sizes)
+    raw_label = rawpy.imread(train_label_dir + os.path.sep + gt_fn)
+    rgb_label_full = raw_label.postprocess(use_camera_wb=True,
+                                      half_size=False,
+                                      no_auto_bright=True,
+                                      output_bps=16,
+                                      user_flip = 0)
+    rgb_label_full = np.minimum(rgb_label_full/ 65535, 1.0)
+    rgb_label_full = np.expand_dims(np.float32(rgb_label_full), axis=0)
+
+    rgb_label_full = np.concatenate([rgb_label_full] * data_num, axis=0)
+
+
+
+    H = rgb_label_full.shape[1]
+    W = rgb_label_full.shape[2]
+
+    rgbs_data_full_lst = []
+    for in_fn in np.random.choice(dataset_dict[gt_fn], data_num, replace=False):
+        in_exposure = float(in_fn[9:-5])
+        gt_exposure = float(gt_fn[9:-5])
+        ratio = min(gt_exposure / in_exposure, 300)
+        print(ratio)
+
+        raw_data = rawpy.imread(train_data_dir + os.path.sep + in_fn)
+        rgb_data = raw_data.postprocess(use_camera_wb=True,
+                                      half_size=False,
+                                      no_auto_bright=True,
+                                      output_bps=16,
+                                      user_flip = 0)
+
+        # First time 10 and save to uint8 to loss some details.
+        rgb_data = np.minimum(rgb_data/ 65535 * 10, 1.0)
+        rgb_data = (rgb_data * 255).astype(np.uint8)
+        rgb_data = tl.prepro.imresize(rgb_data, [int(H/4), int(W/4)])
+        rgb_data = np.minimum(rgb_data.astype(np.float32) * ratio/10, 255)
+        rgb_data = (rgb_data / 127.5) - 1
+
+        rgb_data = np.expand_dims(rgb_data, axis=0)
+        rgbs_data_full_lst.append(rgb_data)
+
+    rgb_data_full = np.concatenate(rgbs_data_full_lst, axis=0)
+
 
     #crop the img
-    H = raw_full.shape[0]
-    W = raw_full.shape[1]
+    gts = []
+    ins = []
 
-    rgbs = []
-    raws = []
-
-    for i in range(output_num):
+    for i in range(crop_num):
         xx = np.random.randint(0, W - crop_size)
         if not xx % 2 == 0:
             xx -= 1
@@ -123,89 +146,61 @@ def get_one_example(file, crop_size = 384, output_num = 4):
         if not yy % 2 == 0:
             yy -= 1
 
-        rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
+        gt_matrix = rgb_label_full[:, yy:yy + crop_size, xx:xx + crop_size, :]
+        in_matrix = rgb_data_full[:,int(yy/4):int((yy + crop_size)/4), int(xx/4):int((xx + crop_size)/4), :]
 
-        # X200 and rescale to [0,1]
-        rgb_matrix = np.minimum(rgb_matrix/ 65535 * 100, 1.0)
+        gts.append(gt_matrix)
+        ins.append(in_matrix)
 
-        # rescale to [0, 255] and resize to 1/4
-        rgb_matrix = rgb_matrix * 255
-        rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])
+    gts_return = np.concatenate(gts, axis=0)
+    ins_return = np.concatenate(ins, axis=0)
 
-        # rescale to [-1, 1]
-        rgb_matrix = (rgb_matrix / 127.5) - 1
-        rgb_matrix = np.expand_dims(np.float32(rgb_matrix), axis=0)
-        rgbs.append(rgb_matrix)
+    return gts_return, ins_return
 
-        raw_matrix = raw_full[yy:yy + crop_size, xx:xx + crop_size]
-#         raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
-        raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
-        raw_matrix = np.minimum((raw_matrix * 200), 1.0)
-#         print(raw_matrix.shape)
-        raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=2)
-        raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=0)
-        raw_matrix = pack_raw_matrix(raw_matrix)
-        raws.append(raw_matrix)
 
-    rgbs_return = np.concatenate(rgbs, axis=0)
-    raws_return = np.concatenate(raws, axis=0)
+def get_one_example_fix_crop(gt_fn, train_label_dir, train_data_dir, dataset_dict,
+                     crop_size = 384):
 
-    return raws_return, rgbs_return
 
-def get_one_example_fix_crop(file, crop_size = 384):
-    '''
-    Read a raw image, crop from (500, 500)
-    return:
-    1, raws:
-        1x384x384x1 RAW
-    2, rgbs:
-        1x96x96x3 RGB
-    '''
+    raw_label = rawpy.imread(train_label_dir + os.path.sep + gt_fn)
+    rgb_label_full = raw_label.postprocess(use_camera_wb=True,
+                                      half_size=False,
+                                      no_auto_bright=True,
+                                      output_bps=16,
+                                      user_flip = 0)
+    rgb_label_full = np.minimum(rgb_label_full/ 65535, 1.0)
+    rgb_label_full = np.expand_dims(np.float32(rgb_label_full), axis=0)
 
-    raw = rawpy.imread(file)
-    raw_full = raw.raw_image_visible.astype(np.float32)
-    rgb_full = raw.postprocess(use_camera_wb=True,
-                          half_size=False,
-                          no_auto_bright=True,
-                          output_bps=16,
-                          user_flip = 0)
-
-#     print(rgb.shape)
-#     print(raw.sizes)
-
-    #crop the img
-    H = raw_full.shape[0]
-    W = raw_full.shape[1]
-
+    H = rgb_label_full.shape[1]
+    W = rgb_label_full.shape[2]
     xx = 1000
     yy = 1000
 
-    rgb_matrix = rgb_full[yy:yy + crop_size, xx:xx + crop_size, :]
+    in_exposure = float(dataset_dict[gt_fn][0][9:-5])
+    gt_exposure = float(gt_fn[9:-5])
+    ratio = min(gt_exposure / in_exposure, 300)
 
-    # X200 and rescale to [0,1]
-    rgb_matrix = np.minimum(rgb_matrix/ 65535 * 100, 1.0)
+    raw_data = rawpy.imread(train_data_dir + os.path.sep + dataset_dict[gt_fn][0])
+    rgb_data = raw_data.postprocess(use_camera_wb=True,
+                                  half_size=False,
+                                  no_auto_bright=True,
+                                  output_bps=16,
+                                  user_flip = 0)
 
-    # rescale to [0, 255] and resize to 1/4
-    rgb_matrix = rgb_matrix * 255
-    rgb_matrix = tl.prepro.imresize(rgb_matrix, [int(crop_size/4), int(crop_size/4)])
+    # First time 10 and save to uint8 to loss some details.
+    rgb_data = np.minimum(rgb_data/ 65535 * 10, 1.0)
+    rgb_data = (rgb_data * 255).astype(np.uint8)
+    rgb_data = tl.prepro.imresize(rgb_data, [int(H/4), int(W/4)])
+    rgb_data = np.minimum(rgb_data.astype(np.float32) * ratio/10, 255)
+    rgb_data = (rgb_data / 127.5) - 1
 
-    # rescale to [-1, 1]
-    rgb_matrix = (rgb_matrix / 127.5) - 1
-
-    rgb_matrix = np.expand_dims(np.float32(rgb_matrix), axis=0)
+    rgb_data = np.expand_dims(rgb_data, axis=0)
 
 
-    ## For raw
-    raw_matrix = raw_full[yy:yy + crop_size, xx:xx + crop_size]
-#         raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
-    raw_matrix = np.maximum(raw_matrix - 512, 0) / (16383 - 512)
-    raw_matrix = np.minimum((raw_matrix * 200), 1.0)
-#         print(raw_matrix.shape)
-    raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=2)
-    raw_matrix = np.expand_dims(np.float32(raw_matrix), axis=0)
-    raw_matrix = pack_raw_matrix(raw_matrix)
+    gt_matrix = rgb_label_full[:, yy:yy + crop_size, xx:xx + crop_size, :]
+    in_matrix = rgb_data[:,int(yy/4):int((yy + crop_size)/4), int(xx/4):int((xx + crop_size)/4), :]
 
-    return raw_matrix, rgb_matrix
+    return gt_matrix, in_matrix
 
 def pack_raw_matrix(im):
     # pack Bayer image to 4 channels
