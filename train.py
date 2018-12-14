@@ -38,6 +38,7 @@ decay_every = config.TRAIN.decay_every
 training_dir = config.TRAIN.training_dir
 pretrain_checkpoint = config.TRAIN.pretrain_checkpoint
 train_data_dir = config.TRAIN.train_data_dir
+train_label_dir = config.TRAIN.train_label_dir
 dark_model_dir = config.TRAIN.dark_model_dir
 training_exam_dir = config.TRAIN.training_exam_dir
 
@@ -59,8 +60,7 @@ def train():
     net_g = SRGAN_g(rgb_96_input, is_train=True, reuse=False)
     rgb_384_output = dark_network((net_g.outputs + 1)/2, reuse = False)
     # label
-    raw_384 = tf.placeholder('float32', [None, 192, 192, 4], name='raw_384_label')
-    rgb_384_label = dark_network(raw_384, reuse = True)
+    rgb_384_label = tf.placeholder('float32', [None, 384, 384, 3], name='rgb_384_label')
 
 
     # sample_generator
@@ -68,8 +68,7 @@ def train():
     net_g_test = SRGAN_g(rgb_96_sample, is_train=False, reuse=True)
     rgb_384_sample = dark_network((net_g_test.outputs + 1)/2, reuse = True)
 
-    raw_384_sample = tf.placeholder('float32', [None, None, None, 4], name='raw_384_sample')
-    rgb_384_sample_from_raw = dark_network(raw_384_sample, reuse = True)
+    rgb_384_sample = tf.placeholder('float32', [None, None, None, 3], name='rgb_384_sample')
 
     # discriminator
     net_d, logits_real = SRGAN_d(rgb_384_label, is_train=True, reuse=False)
@@ -139,19 +138,8 @@ def train():
         'Variable_2': var_dict['1/Variable_2'],
         'Variable_3': var_dict['1/Variable_3']
     }
-    var_dict_2 = {
-        'Variable': var_dict['2/Variable'],
-        'Variable_1': var_dict['2/Variable_1'],
-        'Variable_2': var_dict['2/Variable_2'],
-        'Variable_3': var_dict['2/Variable_3']
-    }
-    var_dict_3 = {
-        'Variable': var_dict['3/Variable'],
-        'Variable_1': var_dict['3/Variable_1'],
-        'Variable_2': var_dict['3/Variable_2'],
-        'Variable_3': var_dict['3/Variable_3']
-    }
-    for i in range(1,4):
+
+    for i in range(1,2):
         var_dict.pop('%i/Variable' % i)
         var_dict.pop('%i/Variable_1' % i)
         var_dict.pop('%i/Variable_2' % i)
@@ -160,16 +148,12 @@ def train():
     #load the pre-train dark model
     saver = tf.train.Saver(var_dict)
     saver_1 = tf.train.Saver(var_dict_1)
-    saver_2 = tf.train.Saver(var_dict_2)
-    saver_3 = tf.train.Saver(var_dict_3)
 
     ckpt = tf.train.get_checkpoint_state(dark_model_dir)
     if ckpt:
         print('loaded ' + ckpt.model_checkpoint_path)
         saver.restore(sess, ckpt.model_checkpoint_path)
         saver_1.restore(sess, ckpt.model_checkpoint_path)
-        saver_2.restore(sess, ckpt.model_checkpoint_path)
-        saver_3.restore(sess, ckpt.model_checkpoint_path)
 
     # load vgg-model
     vgg19_npy_path = "vgg19.npy"
@@ -190,16 +174,17 @@ def train():
     # 3 thread to read the dataset
     p = Pool(3)
     # load file list
-    train_data_list = sorted(tl.files.load_file_list(train_data_dir, regx = '^0.*.ARW', printable = False))
-
+    train_data_list = sorted(tl.files.load_file_list(train_label_dir, regx = '^0.*.ARW', printable = False))
+    dataset_dict = get_dataset_dict(train_data_list, train_data_dir)
     ni = int(np.sqrt(len(sample_lst)))
     sample_file_name = [train_data_list[i] for i in sample_lst]
 
     rgb_sample, raw_sample = get_inputs_labels(p = p,
-                                              file_dir = train_data_dir,
-                                              raw_file_list = sample_file_name,
-                                              crop_num = None,
-                                              crop_size = sample_img_size)
+                                            gt_lst = sample_file_name,
+                                            train_label_dir = train_label_dir,
+                                            train_data_dir = train_data_dir,
+                                            dataset_dict = dataset_dict,
+                                            crop_size = 1000)
 
     # save rgb x 200 ratio
     rgb_sample_out = ((rgb_sample+1)/2 * 255)

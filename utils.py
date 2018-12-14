@@ -227,3 +227,13 @@ def pack_raw_matrix(im):
                           im[:, 1:H:2, 1:W:2, :],
                           im[:, 1:H:2, 0:W:2, :]), axis=3)
     return out
+
+def get_dataset_dict(long_lst, train_data_dir):
+    dataset_dict = {}
+    for long_label in long_lst:
+        data_id = long_label.split('_')[0]
+        dataset_dict[long_label] = sorted(tl.files.load_file_list(
+                                                train_data_dir,
+                                                regx = '^' + data_id ,
+                                                printable = False))
+    return dataset_dict
