@@ -222,7 +222,7 @@ def train():
                                                 dataset_dict = dataset_dict,
                                                 data_num = data_num,
                                                 crop_num = crop_num,
-                                                crop_size = 384):
+                                                crop_size = 384)
 
             ## update G
             errM, _ = sess.run([mse_loss, g_optim_init], {rgb_96_input: ins_rgbs, rgb_384_label: gts_rgbs})
@@ -279,7 +279,7 @@ def train():
                                                 dataset_dict = dataset_dict,
                                                 data_num = data_num,
                                                 crop_num = crop_num,
-                                                crop_size = 384):
+                                                crop_size = 384)
             ## update D
             errD, _ = sess.run([d_loss, d_optim], {rgb_96_input: ins_rgbs, rgb_384_label: gts_rgbs})
             ## update G
