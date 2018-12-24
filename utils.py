@@ -1,4 +1,4 @@
-    import tensorlayer as tl
+import tensorlayer as tl
 import tensorflow as tf
 import rawpy
 from model import SRGAN_g
@@ -123,11 +123,11 @@ def get_one_example(gt_fn, train_label_dir, train_data_dir, dataset_dict,
         in_exposure = float(in_fn[9:-5])
         gt_exposure = float(gt_fn[9:-5])
         ratio = min(gt_exposure / in_exposure, 300)
-        print(ratio)
+        # print(ratio)
 
         # random downscale input quality
         alpha = np.random.choice([15, 35, 50, ratio/2])
-        print(alpha)
+        # print(alpha)
 
         raw_data = rawpy.imread(train_data_dir + os.path.sep + in_fn)
         rgb_data = raw_data.postprocess(use_camera_wb=True,
