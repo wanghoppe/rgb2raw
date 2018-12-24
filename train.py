@@ -3,9 +3,6 @@ import tensorlayer as tl
 import tensorflow as tf
 import rawpy
 
-import model
-import utils
-
 from PIL import Image
 import numpy as np
 import glob
