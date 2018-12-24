@@ -1,4 +1,4 @@
-import tensorlayer as tl
+    import tensorlayer as tl
 import tensorflow as tf
 import rawpy
 from model import SRGAN_g
@@ -125,6 +125,10 @@ def get_one_example(gt_fn, train_label_dir, train_data_dir, dataset_dict,
         ratio = min(gt_exposure / in_exposure, 300)
         print(ratio)
 
+        # random downscale input quality
+        alpha = np.random.choice([15, 35, 50, ratio/2])
+        print(alpha)
+
         raw_data = rawpy.imread(train_data_dir + os.path.sep + in_fn)
         rgb_data = raw_data.postprocess(use_camera_wb=True,
                                       half_size=False,
@@ -133,10 +137,10 @@ def get_one_example(gt_fn, train_label_dir, train_data_dir, dataset_dict,
                                       user_flip = 0)
 
         # First time 10 and save to uint8 to loss some details.
-        rgb_data = np.minimum(rgb_data/ 65535 * 10, 1.0)
+        rgb_data = np.minimum(rgb_data/ 65535 * alpha, 1.0)
         rgb_data = (rgb_data * 255).astype(np.uint8)
         rgb_data = tl.prepro.imresize(rgb_data, [int(H/4), int(W/4)])
-        rgb_data = np.minimum(rgb_data.astype(np.float32) * ratio/10, 255)
+        rgb_data = np.minimum(rgb_data.astype(np.float32) * ratio/(alpha * 2), 255)
         rgb_data = (rgb_data / 127.5) - 1
 
         rgb_data = np.expand_dims(rgb_data, axis=0)
@@ -199,10 +203,10 @@ def get_one_example_fix_crop(gt_fn, train_label_dir, train_data_dir, dataset_dic
                                   user_flip = 0)
 
     # First time 10 and save to uint8 to loss some details.
-    rgb_data = np.minimum(rgb_data/ 65535 * 10, 1.0)
+    rgb_data = np.minimum(rgb_data/ 65535 * 35, 1.0)
     rgb_data = (rgb_data * 255).astype(np.uint8)
     rgb_data = tl.prepro.imresize(rgb_data, [int(H/4), int(W/4)])
-    rgb_data = np.minimum(rgb_data.astype(np.float32) * ratio/10, 255)
+    rgb_data = np.minimum(rgb_data.astype(np.float32) * ratio/70, 255)
     rgb_data = (rgb_data / 127.5) - 1
 
     rgb_data = np.expand_dims(rgb_data, axis=0)

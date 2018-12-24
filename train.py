@@ -41,6 +41,7 @@ training_exam_dir = config.TRAIN.training_exam_dir
 
 
 crop_num = config.TRAIN.crop_num
+data_num = config.TRAIN.data_num
 sample_img_size = config.TRAIN.sample_img_size
 sample_lst = config.TRAIN.sample_lst
 
@@ -64,8 +65,6 @@ def train():
     rgb_96_sample = tf.placeholder('float32', [None, None, None, 3], name='rgb_96_sample_to_SRGAN_g_test')
     net_g_test = SRGAN_g(rgb_96_sample, is_train=False, reuse=True)
     rgb_384_sample = dark_network((net_g_test.outputs + 1)/2, reuse = True)
-
-    rgb_384_sample = tf.placeholder('float32', [None, None, None, 3], name='rgb_384_sample')
 
     # discriminator
     net_d, logits_real = SRGAN_d(rgb_384_label, is_train=True, reuse=False)
@@ -176,7 +175,7 @@ def train():
     ni = int(np.sqrt(len(sample_lst)))
     sample_file_name = [train_data_list[i] for i in sample_lst]
 
-    rgb_sample, raw_sample = get_inputs_labels(p = p,
+    ins_sample, gts_sample = get_inputs_labels(p = p,
                                             gt_lst = sample_file_name,
                                             train_label_dir = train_label_dir,
                                             train_data_dir = train_data_dir,
@@ -184,20 +183,16 @@ def train():
                                             crop_size = 1000)
 
     # save rgb x 200 ratio
-    rgb_sample_out = ((rgb_sample+1)/2 * 255)
+    ins_sample_out = ((ins_sample+1)/2 * 255)
 
-    rgb_sample_out_filename = training_exam_dir + os.path.sep + 'rgb_sample.png'
-    if not os.path.exists(rgb_sample_out_filename):
-        tl.vis.save_images(rgb_sample_out, [ni, ni], rgb_sample_out_filename)
+    ins_sample_out_filename = training_exam_dir + os.path.sep + 'ins_sample.png'
+    if not os.path.exists(ins_sample_out_filename):
+        tl.vis.save_images(ins_sample_out, [ni, ni], ins_sample_out_filename)
 
-    # save raw x 200 through dark model
-    label_raw_sample = sess.run(rgb_384_sample_from_raw, feed_dict={raw_384_sample: raw_sample})
-    label_raw_sample = np.minimum(np.maximum(label_raw_sample, 0), 1)
-    label_raw_sample = (label_raw_sample * 255)
 
-    label_raw_sample_out_file_name = training_exam_dir + os.path.sep + 'label_raw_sample.png'
-    if not os.path.exists(label_raw_sample_out_file_name):
-        tl.vis.save_images(label_raw_sample, [ni, ni], label_raw_sample_out_file_name)
+    gts_sample_out_file_name = training_exam_dir + os.path.sep + 'gts_sample.png'
+    if not os.path.exists(gts_sample_out_file_name):
+        tl.vis.save_images(gts_sample * 255, [ni, ni], gts_sample_out_file_name)
 
 
     ###============================= TRAINING ===============================###
@@ -220,10 +215,17 @@ def train():
             step_time = time.time()
 
             batch_file_name = train_data_list[idx: idx+batch_size]
-            inputs_rgbs, label_raws = get_inputs_labels(p, train_data_dir, batch_file_name, crop_num)
+            ins_rgbs, gts_rgbs = get_inputs_labels(p=p,
+                                                gt_lst = batch_file_name,
+                                                train_label_dir = train_label_dir,
+                                                train_data_dir = train_data_dir,
+                                                dataset_dict = dataset_dict,
+                                                data_num = data_num,
+                                                crop_num = crop_num,
+                                                crop_size = 384):
 
             ## update G
-            errM, _ = sess.run([mse_loss, g_optim_init], {rgb_96_input: inputs_rgbs, raw_384: label_raws})
+            errM, _ = sess.run([mse_loss, g_optim_init], {rgb_96_input: ins_rgbs, rgb_384_label: gts_rgbs})
             print("Epoch [%2d/%2d] %4d time: %4.4fs, mse: %.8f " % (epoch, n_epoch_init, n_iter, time.time() - step_time, errM))
             total_mse_loss += errM
             n_iter += 1
@@ -232,7 +234,7 @@ def train():
 
         ## quick evaluation on train set
         if (epoch != 0) and (epoch % 2 == 0):
-            sample_out = sess.run(rgb_384_sample, {rgb_96_sample: rgb_sample})
+            sample_out = sess.run(rgb_384_sample, {rgb_96_sample: ins_sample})
             sample_out = np.minimum(np.maximum(sample_out, 0), 1)
             sample_out = (sample_out * 255)
 
@@ -270,12 +272,19 @@ def train():
         for idx in range(0, len(train_data_list), batch_size):
             step_time = time.time()
             batch_file_name = train_data_list[idx: idx+batch_size]
-            inputs_rgbs, label_raws = get_inputs_labels(p, train_data_dir, batch_file_name, crop_num)
+            ins_rgbs, gts_rgbs = get_inputs_labels(p=p,
+                                                gt_lst = batch_file_name,
+                                                train_label_dir = train_label_dir,
+                                                train_data_dir = train_data_dir,
+                                                dataset_dict = dataset_dict,
+                                                data_num = data_num,
+                                                crop_num = crop_num,
+                                                crop_size = 384):
             ## update D
-            errD, _ = sess.run([d_loss, d_optim], {rgb_96_input: inputs_rgbs, raw_384: label_raws})
+            errD, _ = sess.run([d_loss, d_optim], {rgb_96_input: ins_rgbs, rgb_384_label: gts_rgbs})
             ## update G
             errG, errM, errV, errA, _ = sess.run([g_loss, mse_loss, vgg_loss, g_gan_loss, g_optim],
-                                                 {rgb_96_input: inputs_rgbs, raw_384: label_raws})
+                                                 {rgb_96_input: ins_rgbs, rgb_384_label: gts_rgbs})
             print("Epoch [%2d/%2d] %4d time: %4.4fs, d_loss: %.8f g_loss: %.8f (mse: %.6f vgg: %.6f adv: %.6f)" %
                   (epoch, n_epoch, n_iter, time.time() - step_time, errD, errG, errM, errV, errA))
             total_d_loss += errD
@@ -288,7 +297,7 @@ def train():
 
         ## quick evaluation on train set
         if (epoch != 0) and (epoch % 2 == 0):
-            sample_out = sess.run(rgb_384_sample, {rgb_96_sample: rgb_sample})
+            sample_out = sess.run(rgb_384_sample, {rgb_96_sample: ins_sample})
             sample_out = np.minimum(np.maximum(sample_out, 0), 1)
             sample_out = (sample_out * 255)
 
