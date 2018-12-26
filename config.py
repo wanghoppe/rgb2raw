@@ -6,30 +6,31 @@ config.TRAIN = edict()
 
 ## Adam
 
-config.TRAIN.lr_init = 1e-4
+config.TRAIN.lr_init = 1e-5
 config.TRAIN.beta1 = 0.9
 
 ## initialize G
-config.TRAIN.n_epoch_init = 10
+config.TRAIN.n_epoch_init = -1
     # config.TRAIN.lr_decay_init = 0.1
     # config.TRAIN.decay_every_init = int(config.TRAIN.n_epoch_init / 2)
 
 ## adversarial learning (SRGAN)
-config.TRAIN.n_epoch = 20
+config.TRAIN.n_epoch = 60
 config.TRAIN.lr_decay = 0.1
 config.TRAIN.decay_every = int(config.TRAIN.n_epoch / 2)
 
 
 ## set_dir
-config.TRAIN.training_dir = 'training_dir_change_label'
+config.TRAIN.training_dir  = 'training_dir_change_label'
 config.TRAIN.training_exam_dir = 'training_exam_change_label'
 config.TRAIN.pretrain_checkpoint = 'checkpoint'
 config.TRAIN.train_data_dir = 'dataset/Sony/Sony/short'
 config.TRAIN.train_label_dir = 'dataset/Sony/Sony/long'
 config.TRAIN.dark_model_dir = 'dark_model/Sony'
+config.TRAIN.trained_dark_model_dir = config.TRAIN.training_dir +s '/dark_model'
 
 
-config.TRAIN.batch_size = 4
+config.TRAIN.batch_size = 2
 config.TRAIN.crop_num = 2
 config.TRAIN.data_num = 2
 config.TRAIN.sample_img_size = 1000

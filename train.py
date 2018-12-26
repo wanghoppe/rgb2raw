@@ -38,6 +38,7 @@ train_data_dir = config.TRAIN.train_data_dir
 train_label_dir = config.TRAIN.train_label_dir
 dark_model_dir = config.TRAIN.dark_model_dir
 training_exam_dir = config.TRAIN.training_exam_dir
+trained_dark_model_dir = config.TRAIN.trained_dark_model_dir
 
 
 crop_num = config.TRAIN.crop_num
@@ -145,11 +146,17 @@ def train():
     saver = tf.train.Saver(var_dict)
     saver_1 = tf.train.Saver(var_dict_1)
 
-    ckpt = tf.train.get_checkpoint_state(dark_model_dir)
+    ckpt = tf.train.get_checkpoint_state(trained_dark_model_dir)
     if ckpt:
         print('loaded ' + ckpt.model_checkpoint_path)
         saver.restore(sess, ckpt.model_checkpoint_path)
         saver_1.restore(sess, ckpt.model_checkpoint_path)
+    else:
+        ckpt2 = tf.train.get_checkpoint_state(dark_model_dir)
+        if ckpt2:
+            print('loaded ' + ckpt2.model_checkpoint_path)
+            saver.restore(sess, ckpt2.model_checkpoint_path)
+            saver_1.restore(sess, ckpt2.model_checkpoint_path)
 
     # load vgg-model
     vgg19_npy_path = "vgg19.npy"
@@ -246,6 +253,7 @@ def train():
         ## save model
         if (epoch != 0) and (epoch % 2 == 0):
             tl.files.save_npz(net_g.all_params, name=training_dir + '/g_srgan_init.npz', sess=sess)
+            saver.save(sess, trained_dark_model_dir + 'model.ckpt')
 
 
     ###========================= train GAN (SRGAN) =========================###
@@ -310,5 +318,6 @@ def train():
         if (epoch != 0) and (epoch % 2 == 0):
             tl.files.save_npz(net_g.all_params, name=training_dir + '/g_srgan.npz', sess=sess)
             tl.files.save_npz(net_d.all_params, name=training_dir + '/d_srgan.npz', sess=sess)
+            saver.save(sess, trained_dark_model_dir + 'model.ckpt')
 if __name__ == '__main__':
     train()
