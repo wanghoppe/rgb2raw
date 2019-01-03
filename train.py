@@ -104,6 +104,25 @@ def train():
     # g_loss = mse_loss + g_gan_loss
 
     g_vars = tl.layers.get_variables_with_name('SRGAN_g', True, True)
+
+    # get varibles from the dark model
+    var_dict = dark_model_var_dict(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='DARK'))
+    var_dict_1 = {
+        'Variable': var_dict['1/Variable'],
+        'Variable_1': var_dict['1/Variable_1'],
+        'Variable_2': var_dict['1/Variable_2'],
+        'Variable_3': var_dict['1/Variable_3']
+    }
+
+    for i in range(1,2):
+        var_dict.pop('%i/Variable' % i)
+        var_dict.pop('%i/Variable_1' % i)
+        var_dict.pop('%i/Variable_2' % i)
+        var_dict.pop('%i/Variable_3' % i)
+
+    # Add varibles from dark model to train
+    g_vars.extend(list(var_dict.values()))
+
     d_vars = tl.layers.get_variables_with_name('SRGAN_d', True, True)
 
     with tf.variable_scope('learning_rate'):
@@ -128,19 +147,6 @@ def train():
     tl.files.load_and_assign_npz(sess=sess, name=training_dir + '/d_srgan.npz', network=net_d)
 
     ## restore the dark model
-    var_dict = dark_model_var_dict(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='DARK'))
-    var_dict_1 = {
-        'Variable': var_dict['1/Variable'],
-        'Variable_1': var_dict['1/Variable_1'],
-        'Variable_2': var_dict['1/Variable_2'],
-        'Variable_3': var_dict['1/Variable_3']
-    }
-
-    for i in range(1,2):
-        var_dict.pop('%i/Variable' % i)
-        var_dict.pop('%i/Variable_1' % i)
-        var_dict.pop('%i/Variable_2' % i)
-        var_dict.pop('%i/Variable_3' % i)
 
     #load the pre-train dark model
     saver = tf.train.Saver(var_dict)
@@ -253,7 +259,7 @@ def train():
         ## save model
         if (epoch != 0) and (epoch % 2 == 0):
             tl.files.save_npz(net_g.all_params, name=training_dir + '/g_srgan_init.npz', sess=sess)
-            saver.save(sess, trained_dark_model_dir + 'model.ckpt')
+            saver.save(sess, trained_dark_model_dir + '/model.ckpt')
 
 
     ###========================= train GAN (SRGAN) =========================###
@@ -318,6 +324,6 @@ def train():
         if (epoch != 0) and (epoch % 2 == 0):
             tl.files.save_npz(net_g.all_params, name=training_dir + '/g_srgan.npz', sess=sess)
             tl.files.save_npz(net_d.all_params, name=training_dir + '/d_srgan.npz', sess=sess)
-            saver.save(sess, trained_dark_model_dir + 'model.ckpt')
+            saver.save(sess, trained_dark_model_dir + '/model.ckpt')
 if __name__ == '__main__':
     train()
